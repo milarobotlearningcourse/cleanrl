@@ -199,8 +199,7 @@ if __name__ == "__main__":
 
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
-            obs[step] = next_obs
-            dones[step] = next_done
+            TODO ### Store data from the environment in the buffers
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
@@ -210,9 +209,9 @@ if __name__ == "__main__":
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, reward, done, info = envs.step(action.cpu().numpy())
-            rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
+            TODO ## Execute an action in the environment then store the resulting data.
+            ### HINT: torch networks can only process torch.Tensor not numpy array
+            ### for example to convert the action from tensor to torch use action.cpu().numpy()
 
             for item in info:
                 if "episode" in item.keys():
@@ -224,30 +223,10 @@ if __name__ == "__main__":
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(next_obs).reshape(1, -1)
-            if args.gae:
-                advantages = torch.zeros_like(rewards).to(device)
-                lastgaelam = 0
-                for t in reversed(range(args.num_steps)):
-                    if t == args.num_steps - 1:
-                        nextnonterminal = 1.0 - next_done
-                        nextvalues = next_value
-                    else:
-                        nextnonterminal = 1.0 - dones[t + 1]
-                        nextvalues = values[t + 1]
-                    delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
-                    advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
-                returns = advantages + values
-            else:
-                returns = torch.zeros_like(rewards).to(device)
-                for t in reversed(range(args.num_steps)):
-                    if t == args.num_steps - 1:
-                        nextnonterminal = 1.0 - next_done
-                        next_return = next_value
-                    else:
-                        nextnonterminal = 1.0 - dones[t + 1]
-                        next_return = returns[t + 1]
-                    returns[t] = rewards[t] + args.gamma * nextnonterminal * next_return
-                advantages = returns - values
+            TODO ## Give the code for computing the advantage
+            ## Hint, use the values and returns
+            
+            advantages = ????
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
@@ -272,13 +251,7 @@ if __name__ == "__main__":
 
                 with torch.no_grad():
                     # calculate approx_kl http://joschu.net/blog/kl-approx.html
-                    old_approx_kl = (-logratio).mean()
-                    approx_kl = ((ratio - 1) - logratio).mean()
-                    clipfracs += [((ratio - 1.0).abs() > args.clip_coef).float().mean().item()]
-
-                mb_advantages = b_advantages[mb_inds]
-                if args.norm_adv:
-                    mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
+                    TODO ## Provide the code for computing the policy gradient
 
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio
@@ -287,18 +260,7 @@ if __name__ == "__main__":
 
                 # Value loss
                 newvalue = newvalue.view(-1)
-                if args.clip_vloss:
-                    v_loss_unclipped = (newvalue - b_returns[mb_inds]) ** 2
-                    v_clipped = b_values[mb_inds] + torch.clamp(
-                        newvalue - b_values[mb_inds],
-                        -args.clip_coef,
-                        args.clip_coef,
-                    )
-                    v_loss_clipped = (v_clipped - b_returns[mb_inds]) ** 2
-                    v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
-                    v_loss = 0.5 * v_loss_max.mean()
-                else:
-                    v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
+                TODO ## Provide code for computing the policy function loss
 
                 entropy_loss = entropy.mean()
                 loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
